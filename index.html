@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>手冲咖啡记录 · Brew Journal</title>
+  <title>碳足迹追踪 · Carbon Tracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
@@ -14,11 +14,11 @@
     <header class="app-header">
       <div class="header-content">
         <div class="logo">
-          <span class="logo-icon">☕</span>
-          <h1 class="app-title">手冲咖啡记录</h1>
-          <span class="app-subtitle">Brew Journal</span>
+          <span class="logo-icon">🌱</span>
+          <h1 class="app-title">碳足迹追踪</h1>
+          <span class="app-subtitle">Carbon Tracker</span>
         </div>
-        <p class="app-tagline">记录每一杯完美萃取的参数</p>
+        <p class="app-tagline">记录每一次排放，守护我们的地球</p>
       </div>
     </header>
 
@@ -28,69 +28,36 @@
           <div class="card form-card">
             <h2 class="card-title">
               <span class="title-icon">📝</span>
-              记录冲煮参数
+              记录碳排放
             </h2>
-            <form id="brewForm" class="brew-form">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="beanName">豆子名称</label>
-                  <input type="text" id="beanName" name="beanName" required 
-                         placeholder="如：耶加雪菲 / 瑰夏" autocomplete="off">
-                  <datalist id="beanSuggestions"></datalist>
-                </div>
+            <form id="carbonForm" class="carbon-form">
+              <div class="form-group">
+                <label for="category">排放类别</label>
+                <select id="category" name="category" required>
+                  <option value="">请选择类别</option>
+                  <option value="交通">🚗 交通出行</option>
+                  <option value="饮食">🍽️ 饮食消费</option>
+                  <option value="能源">⚡ 能源使用</option>
+                  <option value="购物">🛒 购物消费</option>
+                  <option value="其他">📦 其他</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="action">具体行为</label>
+                <input type="text" id="action" name="action" required 
+                       placeholder="如：开车上班20km / 点外卖一份" autocomplete="off">
               </div>
 
               <div class="form-row">
                 <div class="form-group">
-                  <label for="grindSize">研磨度 <span class="value-label" id="grindSizeValue">5</span></label>
-                  <div class="slider-group">
-                    <input type="range" id="grindSize" name="grindSize" min="1" max="10" value="5">
-                    <input type="number" id="grindSizeNum" min="1" max="10" value="5">
-                  </div>
-                  <div class="range-labels">
-                    <span>细</span>
-                    <span>粗</span>
-                  </div>
+                  <label for="emission">碳排放量 (kg CO₂)</label>
+                  <input type="number" id="emission" name="emission" 
+                         min="0.01" max="1000" step="0.01" value="1" required>
                 </div>
                 <div class="form-group">
-                  <label for="coffeeWeight">粉量 (克)</label>
-                  <input type="number" id="coffeeWeight" name="coffeeWeight" 
-                         min="1" max="100" step="0.1" value="15" required>
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="waterTemp">水温 (°C)</label>
-                  <input type="number" id="waterTemp" name="waterTemp" 
-                         min="80" max="100" step="0.5" value="92" required>
-                </div>
-                <div class="form-group">
-                  <label for="waterAmount">总注水量 (ml)</label>
-                  <input type="number" id="waterAmount" name="waterAmount" 
-                         min="50" max="1000" value="240" required>
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="brewTime">萃取时长 (秒)</label>
-                  <input type="number" id="brewTime" name="brewTime" 
-                         min="10" max="600" value="150" required>
-                </div>
-                <div class="form-group">
-                  <label for="rating">风味评分 <span class="value-label" id="ratingValue">3</span></label>
-                  <div class="slider-group">
-                    <input type="range" id="rating" name="rating" min="1" max="5" step="0.5" value="3">
-                    <input type="number" id="ratingNum" min="1" max="5" step="0.5" value="3">
-                  </div>
-                  <div class="rating-stars" id="ratingStars">
-                    <span data-value="1">☆</span>
-                    <span data-value="2">☆</span>
-                    <span data-value="3">☆</span>
-                    <span data-value="4">☆</span>
-                    <span data-value="5">☆</span>
-                  </div>
+                  <label for="date">日期</label>
+                  <input type="date" id="date" name="date" required>
                 </div>
               </div>
 
@@ -101,60 +68,71 @@
             </form>
           </div>
 
-          <div class="card chart-card">
+          <div class="card stats-card">
             <h2 class="card-title">
               <span class="title-icon">📊</span>
-              最近 20 次评分趋势
+              本月统计
             </h2>
-            <div class="chart-container">
-              <canvas id="ratingChart"></canvas>
-              <div class="empty-chart" id="emptyChart">
-                <p>暂无记录</p>
-                <p class="empty-hint">保存第一条冲煮记录后将显示趋势图</p>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-value" id="monthlyTotal">0</div>
+                <div class="stat-label">总排放 (kg CO₂)</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" id="dailyAverage">0</div>
+                <div class="stat-label">日均排放 (kg)</div>
               </div>
             </div>
-          </div>
-
-          <div class="card compare-card" id="compareCard" style="display: none;">
-            <h2 class="card-title">
-              <span class="title-icon">⚖️</span>
-              参数对比
-              <button class="close-compare" id="closeCompare" title="关闭对比">×</button>
-            </h2>
-            <div class="compare-container" id="compareContainer">
-              <div class="compare-header">
-                <div class="compare-label">记录 A</div>
-                <div class="compare-label diff-count" id="diffCount">0 处差异</div>
-                <div class="compare-label">记录 B</div>
+            
+            <div class="comparison-section">
+              <div class="comparison-header">
+                <span class="comparison-title">🌍 与全国人均对比</span>
+                <span class="comparison-reference">全国人均日排放: 19.2 kg</span>
               </div>
-              <div class="compare-content" id="compareContent"></div>
+              <div class="comparison-bar">
+                <div class="comparison-fill national">
+                  <span class="bar-label">全国人均</span>
+                </div>
+                <div class="comparison-fill personal" id="personalBar">
+                  <span class="bar-label">我的日均</span>
+                </div>
+              </div>
+              <div class="comparison-result" id="comparisonResult">
+                暂无数据
+              </div>
             </div>
           </div>
         </section>
 
         <section class="right-panel">
+          <div class="card chart-card">
+            <h2 class="card-title">
+              <span class="title-icon">📈</span>
+              最近 30 天排放趋势
+            </h2>
+            <div class="chart-container">
+              <canvas id="carbonChart"></canvas>
+              <div class="empty-chart" id="emptyChart">
+                <p>暂无记录</p>
+                <p class="empty-hint">保存第一条记录后将显示趋势图</p>
+              </div>
+            </div>
+            <div class="chart-legend" id="chartLegend"></div>
+          </div>
+
           <div class="card history-card">
             <div class="history-header">
               <h2 class="card-title">
                 <span class="title-icon">📚</span>
-                冲煮历史
+                排放记录
                 <span class="record-count" id="recordCount">0</span>
               </h2>
-              <div class="filter-group">
-                <input type="text" id="beanFilter" placeholder="按豆子名称筛选..." 
-                       list="beanSuggestions" autocomplete="off">
-                <button class="clear-filter" id="clearFilter" style="display: none;">清除</button>
-              </div>
-            </div>
-            <div class="compare-hint" id="compareHint" style="display: none;">
-              <span>💡 已选择 <strong id="selectedCount">0</strong>/2 条记录进行对比</span>
-              <button class="do-compare-btn" id="doCompareBtn" disabled>开始对比</button>
             </div>
             <div class="history-list" id="historyList">
               <div class="empty-state">
-                <div class="empty-icon">☕</div>
-                <p>还没有冲煮记录</p>
-                <p class="empty-hint">填写左侧表单开始记录你的第一杯手冲</p>
+                <div class="empty-icon">🌿</div>
+                <p>还没有碳排放记录</p>
+                <p class="empty-hint">填写左侧表单开始记录你的碳足迹</p>
               </div>
             </div>
           </div>

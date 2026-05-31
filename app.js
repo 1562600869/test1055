@@ -1,34 +1,21 @@
 (function() {
   'use strict';
 
-  const STORAGE_KEYS = {
-    RECORDS: 'coffeeBrewRecords',
-    BEAN_NAMES: 'coffeeBeanNames'
-  };
+  const STORAGE_KEY = 'carbonFootprintRecords';
+  const NATIONAL_AVERAGE_DAILY = 19.2;
 
-  const FIELD_LABELS = {
-    beanName: '豆子名称',
-    grindSize: '研磨度',
-    coffeeWeight: '粉量',
-    waterTemp: '水温',
-    waterAmount: '注水量',
-    brewTime: '萃取时长',
-    rating: '风味评分'
-  };
-
-  const FIELD_UNITS = {
-    grindSize: '',
-    coffeeWeight: 'g',
-    waterTemp: '°C',
-    waterAmount: 'ml',
-    brewTime: 's',
-    rating: ' 分'
-  };
+  const CATEGORIES = [
+    { name: '交通', color: '#1976D2' },
+    { name: '饮食', color: '#F57C00' },
+    { name: '能源', color: '#FBC02D' },
+    { name: '购物', color: '#7B1FA2' },
+    { name: '其他', color: '#607D8B' }
+  ];
 
   const StorageManager = {
     getRecords() {
       try {
-        const data = localStorage.getItem(STORAGE_KEYS.RECORDS);
+        const data = localStorage.getItem(STORAGE_KEY);
         return data ? JSON.parse(data) : [];
       } catch (e) {
         console.error('读取记录失败:', e);
@@ -39,42 +26,15 @@
     saveRecord(record) {
       const records = this.getRecords();
       records.push(record);
-      localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(records));
-      this.saveBeanName(record.beanName);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
       return records;
     },
 
     deleteRecord(id) {
       const records = this.getRecords();
       const filtered = records.filter(r => r.id !== id);
-      localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(filtered));
-      this.updateBeanNames();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
       return filtered;
-    },
-
-    getBeanNames() {
-      try {
-        const data = localStorage.getItem(STORAGE_KEYS.BEAN_NAMES);
-        return data ? JSON.parse(data) : [];
-      } catch (e) {
-        console.error('读取豆子名称失败:', e);
-        return [];
-      }
-    },
-
-    saveBeanName(name) {
-      if (!name || name.trim() === '') return;
-      const names = this.getBeanNames();
-      if (!names.includes(name.trim())) {
-        names.push(name.trim());
-        localStorage.setItem(STORAGE_KEYS.BEAN_NAMES, JSON.stringify(names));
-      }
-    },
-
-    updateBeanNames() {
-      const records = this.getRecords();
-      const names = [...new Set(records.map(r => r.beanName).filter(Boolean))];
-      localStorage.setItem(STORAGE_KEYS.BEAN_NAMES, JSON.stringify(names));
     }
   };
 
@@ -83,35 +43,21 @@
 
     init() {
       this.elements = {
-        brewForm: document.getElementById('brewForm'),
-        beanName: document.getElementById('beanName'),
-        grindSize: document.getElementById('grindSize'),
-        grindSizeNum: document.getElementById('grindSizeNum'),
-        grindSizeValue: document.getElementById('grindSizeValue'),
-        coffeeWeight: document.getElementById('coffeeWeight'),
-        waterTemp: document.getElementById('waterTemp'),
-        waterAmount: document.getElementById('waterAmount'),
-        brewTime: document.getElementById('brewTime'),
-        rating: document.getElementById('rating'),
-        ratingNum: document.getElementById('ratingNum'),
-        ratingValue: document.getElementById('ratingValue'),
-        ratingStars: document.getElementById('ratingStars'),
-        beanSuggestions: document.getElementById('beanSuggestions'),
+        carbonForm: document.getElementById('carbonForm'),
+        category: document.getElementById('category'),
+        action: document.getElementById('action'),
+        emission: document.getElementById('emission'),
+        date: document.getElementById('date'),
+        monthlyTotal: document.getElementById('monthlyTotal'),
+        dailyAverage: document.getElementById('dailyAverage'),
+        personalBar: document.getElementById('personalBar'),
+        comparisonResult: document.getElementById('comparisonResult'),
+        carbonChart: document.getElementById('carbonChart'),
+        emptyChart: document.getElementById('emptyChart'),
+        chartLegend: document.getElementById('chartLegend'),
         historyList: document.getElementById('historyList'),
         recordCount: document.getElementById('recordCount'),
-        beanFilter: document.getElementById('beanFilter'),
-        clearFilter: document.getElementById('clearFilter'),
-        ratingChart: document.getElementById('ratingChart'),
-        emptyChart: document.getElementById('emptyChart'),
-        compareHint: document.getElementById('compareHint'),
-        selectedCount: document.getElementById('selectedCount'),
-        doCompareBtn: document.getElementById('doCompareBtn'),
-        compareCard: document.getElementById('compareCard'),
-        compareContent: document.getElementById('compareContent'),
-        diffCount: document.getElementById('diffCount'),
-        closeCompare: document.getElementById('closeCompare'),
-        toast: document.getElementById('toast'),
-        historyCard: document.querySelector('.history-card')
+        toast: document.getElementById('toast')
       };
     },
 
@@ -124,140 +70,120 @@
       }, 2500);
     },
 
-    updateSliderProgress(slider) {
-      const min = parseFloat(slider.min);
-      const max = parseFloat(slider.max);
-      const value = parseFloat(slider.value);
-      const progress = ((value - min) / (max - min)) * 100;
-      slider.style.setProperty('--range-progress', progress + '%');
-    },
-
-    updateRatingStars(rating) {
-      const { ratingStars } = this.elements;
-      const stars = ratingStars.querySelectorAll('span');
-      stars.forEach((star, index) => {
-        if (index < Math.floor(rating)) {
-          star.textContent = '★';
-          star.classList.add('active');
-        } else if (index < rating) {
-          star.textContent = '★';
-          star.classList.add('active');
-        } else {
-          star.textContent = '☆';
-          star.classList.remove('active');
-        }
-      });
-    },
-
-    updateBeanSuggestions() {
-      const { beanSuggestions } = this.elements;
-      const names = StorageManager.getBeanNames();
-      beanSuggestions.innerHTML = names.map(n => `<option value="${this.escapeHtml(n)}">`).join('');
-    },
-
     escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     },
 
-    formatDate(timestamp) {
-      const date = new Date(timestamp);
+    formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    },
+
+    getCategoryColor(categoryName) {
+      const category = CATEGORIES.find(c => c.name === categoryName);
+      return category ? category.color : '#607D8B';
+    }
+  };
+
+  const Statistics = {
+    getMonthlyTotal(records) {
       const now = new Date();
-      const diff = now - date;
-      const oneDay = 24 * 60 * 60 * 1000;
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
 
-      if (diff < oneDay && date.getDate() === now.getDate()) {
-        return '今天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-      } else if (diff < 2 * oneDay) {
-        return '昨天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-      } else if (diff < 7 * oneDay) {
-        const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-        return days[date.getDay()] + ' ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      return records
+        .filter(r => {
+          const date = new Date(r.date);
+          return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+        })
+        .reduce((sum, r) => sum + r.emission_kg, 0);
+    },
+
+    getDailyAverage(records) {
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+
+      const monthlyRecords = records.filter(r => {
+        const date = new Date(r.date);
+        return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+      });
+
+      if (monthlyRecords.length === 0) return 0;
+
+      const uniqueDays = new Set(monthlyRecords.map(r => r.date));
+      const total = monthlyRecords.reduce((sum, r) => sum + r.emission_kg, 0);
+
+      return total / uniqueDays.size;
+    },
+
+    compareWithNational(dailyAverage) {
+      if (dailyAverage === 0) return { ratio: 0, level: 'none' };
+
+      const ratio = (dailyAverage / NATIONAL_AVERAGE_DAILY) * 100;
+      let level;
+
+      if (ratio < 70) {
+        level = 'good';
+      } else if (ratio < 110) {
+        level = 'warning';
       } else {
-        return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }) +
-               ' ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        level = 'high';
       }
+
+      return { ratio, level };
     },
 
-    formatValue(field, value) {
-      if (field === 'beanName') return value;
-      const unit = FIELD_UNITS[field] || '';
-      return value + unit;
-    },
+    get30DaysData(records) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    renderStars(rating) {
-      let stars = '';
-      for (let i = 1; i <= 5; i++) {
-        stars += `<span class="${i <= rating ? 'filled' : ''}">${i <= rating ? '★' : '☆'}</span>`;
+      const daysData = [];
+
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+
+        const dayRecords = records.filter(r => r.date === dateStr);
+
+        const categoryData = {};
+        CATEGORIES.forEach(cat => {
+          categoryData[cat.name] = dayRecords
+            .filter(r => r.category === cat.name)
+            .reduce((sum, r) => sum + r.emission_kg, 0);
+        });
+
+        daysData.push({
+          date: dateStr,
+          categories: categoryData,
+          total: dayRecords.reduce((sum, r) => sum + r.emission_kg, 0)
+        });
       }
-      return stars;
+
+      return daysData;
     }
   };
 
   const FormHandler = {
     init() {
-      this.bindSliderEvents();
-      this.bindStarEvents();
+      this.setDefaultDate();
       this.bindFormSubmit();
-      UI.updateSliderProgress(UI.elements.grindSize);
-      UI.updateSliderProgress(UI.elements.rating);
-      UI.updateRatingStars(parseFloat(UI.elements.rating.value));
-      UI.updateBeanSuggestions();
     },
 
-    bindSliderEvents() {
-      const { grindSize, grindSizeNum, grindSizeValue, rating, ratingNum, ratingValue } = UI.elements;
-
-      const syncGrindSize = (rawVal) => {
-        const parsed = parseFloat(rawVal);
-        if (isNaN(parsed)) return;
-        if (parsed < 1 || parsed > 10) {
-          UI.showToast('研磨度需在 1-10 之间', 'error');
-          const corrected = Math.min(10, Math.max(1, parsed));
-          grindSize.value = corrected;
-          grindSizeNum.value = corrected;
-          grindSizeValue.textContent = corrected;
-          UI.updateSliderProgress(grindSize);
-          return;
-        }
-        grindSize.value = parsed;
-        grindSizeNum.value = parsed;
-        grindSizeValue.textContent = parsed;
-        UI.updateSliderProgress(grindSize);
-      };
-
-      const syncRating = (val) => {
-        const value = Math.min(5, Math.max(1, Math.round(parseFloat(val) * 2) / 2 || 1));
-        rating.value = value;
-        ratingNum.value = value;
-        ratingValue.textContent = value;
-        UI.updateSliderProgress(rating);
-        UI.updateRatingStars(value);
-      };
-
-      grindSize.addEventListener('input', (e) => syncGrindSize(e.target.value));
-      grindSizeNum.addEventListener('input', (e) => syncGrindSize(e.target.value));
-      rating.addEventListener('input', (e) => syncRating(e.target.value));
-      ratingNum.addEventListener('input', (e) => syncRating(e.target.value));
-    },
-
-    bindStarEvents() {
-      const { ratingStars } = UI.elements;
-      ratingStars.querySelectorAll('span').forEach(star => {
-        star.addEventListener('click', () => {
-          const value = parseInt(star.dataset.value);
-          UI.elements.rating.value = value;
-          UI.elements.ratingNum.value = value;
-          UI.elements.ratingValue.textContent = value;
-          UI.updateSliderProgress(UI.elements.rating);
-          UI.updateRatingStars(value);
-        });
-      });
+    setDefaultDate() {
+      const today = new Date().toISOString().split('T')[0];
+      UI.elements.date.value = today;
     },
 
     bindFormSubmit() {
-      UI.elements.brewForm.addEventListener('submit', (e) => {
+      UI.elements.carbonForm.addEventListener('submit', (e) => {
         e.preventDefault();
         this.handleSubmit();
       });
@@ -266,14 +192,11 @@
     handleSubmit() {
       const formData = {
         id: Date.now().toString(),
-        beanName: UI.elements.beanName.value.trim(),
-        grindSize: parseFloat(UI.elements.grindSize.value),
-        coffeeWeight: parseFloat(UI.elements.coffeeWeight.value),
-        waterTemp: parseFloat(UI.elements.waterTemp.value),
-        waterAmount: parseInt(UI.elements.waterAmount.value),
-        brewTime: parseInt(UI.elements.brewTime.value),
-        rating: parseFloat(UI.elements.rating.value),
-        createdAt: Date.now()
+        category: UI.elements.category.value,
+        action: UI.elements.action.value.trim(),
+        emission_kg: parseFloat(UI.elements.emission.value),
+        date: UI.elements.date.value,
+        created_at: Date.now()
       };
 
       if (!this.validate(formData)) {
@@ -281,242 +204,46 @@
       }
 
       StorageManager.saveRecord(formData);
-      UI.showToast('记录保存成功！', 'success');
+      UI.showToast('记录保存成功！🌱', 'success');
       this.resetForm();
-      UI.updateBeanSuggestions();
-      BrewApp.refresh();
+      CarbonApp.refresh();
     },
 
     validate(data) {
-      if (!data.beanName) {
-        UI.showToast('请输入豆子名称', 'error');
+      if (!data.category) {
+        UI.showToast('请选择排放类别', 'error');
         return false;
       }
-      if (data.grindSize < 1 || data.grindSize > 10) {
-        UI.showToast('研磨度需在 1-10 之间', 'error');
+      const validCategories = CATEGORIES.map(c => c.name);
+      if (!validCategories.includes(data.category)) {
+        UI.showToast('请选择有效的排放类别', 'error');
         return false;
       }
-      if (data.coffeeWeight <= 0 || data.coffeeWeight > 100) {
-        UI.showToast('粉量需在 1-100 克之间', 'error');
+      if (!data.action) {
+        UI.showToast('请输入具体行为描述', 'error');
         return false;
       }
-      if (data.waterTemp < 80 || data.waterTemp > 100) {
-        UI.showToast('水温需在 80-100°C 之间', 'error');
+      if (isNaN(data.emission_kg) || data.emission_kg <= 0) {
+        UI.showToast('碳排放量必须大于0', 'error');
         return false;
       }
-      if (data.waterAmount < 50 || data.waterAmount > 1000) {
-        UI.showToast('注水量需在 50-1000ml 之间', 'error');
+      if (data.emission_kg > 1000) {
+        UI.showToast('碳排放量不能超过1000kg', 'error');
         return false;
       }
-      if (data.brewTime < 10 || data.brewTime > 600) {
-        UI.showToast('萃取时长需在 10-600 秒之间', 'error');
-        return false;
-      }
-      if (data.rating < 1 || data.rating > 5) {
-        UI.showToast('评分需在 1-5 之间', 'error');
+      if (!data.date) {
+        UI.showToast('请选择日期', 'error');
         return false;
       }
       return true;
     },
 
     resetForm() {
-      UI.elements.beanName.value = '';
-      UI.elements.grindSize.value = 5;
-      UI.elements.grindSizeNum.value = 5;
-      UI.elements.grindSizeValue.textContent = 5;
-      UI.elements.coffeeWeight.value = 15;
-      UI.elements.waterTemp.value = 92;
-      UI.elements.waterAmount.value = 240;
-      UI.elements.brewTime.value = 150;
-      UI.elements.rating.value = 3;
-      UI.elements.ratingNum.value = 3;
-      UI.elements.ratingValue.textContent = 3;
-      UI.updateSliderProgress(UI.elements.grindSize);
-      UI.updateSliderProgress(UI.elements.rating);
-      UI.updateRatingStars(3);
-      UI.elements.beanName.focus();
-    }
-  };
-
-  const HistoryList = {
-    selectedRecords: new Set(),
-    currentFilter: '',
-
-    init() {
-      this.bindFilterEvents();
-      this.bindCompareEvents();
-    },
-
-    bindFilterEvents() {
-      const { beanFilter, clearFilter } = UI.elements;
-
-      beanFilter.addEventListener('input', (e) => {
-        this.currentFilter = e.target.value.trim().toLowerCase();
-        clearFilter.style.display = this.currentFilter ? 'block' : 'none';
-        this.render();
-      });
-
-      clearFilter.addEventListener('click', () => {
-        beanFilter.value = '';
-        this.currentFilter = '';
-        clearFilter.style.display = 'none';
-        this.render();
-      });
-    },
-
-    bindCompareEvents() {
-      const { doCompareBtn, closeCompare } = UI.elements;
-
-      doCompareBtn.addEventListener('click', () => {
-        if (this.selectedRecords.size === 2) {
-          const ids = Array.from(this.selectedRecords);
-          CompareManager.showComparison(ids[0], ids[1]);
-        }
-      });
-
-      closeCompare.addEventListener('click', () => {
-        CompareManager.hideComparison();
-      });
-    },
-
-    render() {
-      let records = StorageManager.getRecords();
-      records = records.sort((a, b) => b.createdAt - a.createdAt);
-
-      if (this.currentFilter) {
-        records = records.filter(r =>
-          r.beanName.toLowerCase().includes(this.currentFilter)
-        );
-      }
-
-      UI.elements.recordCount.textContent = StorageManager.getRecords().length;
-
-      if (records.length === 0) {
-        this.renderEmptyState();
-        return;
-      }
-
-      UI.elements.historyCard.classList.remove('history-card-empty');
-      UI.elements.historyList.innerHTML = records.map(record =>
-        this.createRecordCard(record)
-      ).join('');
-
-      this.bindCardEvents();
-      this.updateCompareHint();
-    },
-
-    renderEmptyState() {
-      UI.elements.historyCard.classList.add('history-card-empty');
-      UI.elements.historyList.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">☕</div>
-          <p>${this.currentFilter ? '没有找到匹配的豆子' : '还没有冲煮记录'}</p>
-          <p class="empty-hint">${this.currentFilter ? '试试其他关键词' : '填写左侧表单开始记录你的第一杯手冲'}</p>
-        </div>
-      `;
-    },
-
-    createRecordCard(record) {
-      const isSelected = this.selectedRecords.has(record.id);
-      const selectedClass = isSelected ? 'selected' : '';
-
-      return `
-        <div class="record-card ${selectedClass}" data-id="${record.id}">
-          <div class="record-header">
-            <span class="record-bean">${UI.escapeHtml(record.beanName)}</span>
-            <div class="record-rating">
-              ${UI.renderStars(record.rating)}
-            </div>
-          </div>
-          <div class="record-params">
-            <div class="param-item">
-              <span class="param-label">研磨度</span>
-              <span class="param-value">${record.grindSize}</span>
-            </div>
-            <div class="param-item">
-              <span class="param-label">粉量</span>
-              <span class="param-value">${record.coffeeWeight}g</span>
-            </div>
-            <div class="param-item">
-              <span class="param-label">水温</span>
-              <span class="param-value">${record.waterTemp}°C</span>
-            </div>
-            <div class="param-item">
-              <span class="param-label">注水量</span>
-              <span class="param-value">${record.waterAmount}ml</span>
-            </div>
-            <div class="param-item">
-              <span class="param-label">时长</span>
-              <span class="param-value">${record.brewTime}s</span>
-            </div>
-            <div class="param-item">
-              <span class="param-label">粉水比</span>
-              <span class="param-value">1:${(record.waterAmount / record.coffeeWeight).toFixed(1)}</span>
-            </div>
-          </div>
-          <div class="record-footer">
-            <span class="record-date">${UI.formatDate(record.createdAt)}</span>
-            <button class="delete-btn" data-delete="${record.id}">删除</button>
-          </div>
-        </div>
-      `;
-    },
-
-    bindCardEvents() {
-      const cards = UI.elements.historyList.querySelectorAll('.record-card');
-
-      cards.forEach(card => {
-        card.addEventListener('click', (e) => {
-          if (e.target.hasAttribute('data-delete')) return;
-          this.toggleSelection(card.dataset.id);
-        });
-
-        const deleteBtn = card.querySelector('[data-delete]');
-        deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.deleteRecord(deleteBtn.dataset.delete);
-        });
-      });
-    },
-
-    toggleSelection(id) {
-      if (this.selectedRecords.has(id)) {
-        this.selectedRecords.delete(id);
-      } else {
-        if (this.selectedRecords.size >= 2) {
-          UI.showToast('最多只能选择 2 条记录进行对比', 'error');
-          return;
-        }
-        this.selectedRecords.add(id);
-      }
-      this.render();
-    },
-
-    updateCompareHint() {
-      const { compareHint, selectedCount, doCompareBtn } = UI.elements;
-
-      if (this.selectedRecords.size > 0) {
-        compareHint.style.display = 'flex';
-        selectedCount.textContent = this.selectedRecords.size;
-        doCompareBtn.disabled = this.selectedRecords.size !== 2;
-      } else {
-        compareHint.style.display = 'none';
-      }
-    },
-
-    deleteRecord(id) {
-      if (!confirm('确定要删除这条记录吗？此操作不可恢复。')) return;
-
-      StorageManager.deleteRecord(id);
-      this.selectedRecords.delete(id);
-      UI.showToast('记录已删除', 'success');
-      UI.updateBeanSuggestions();
-      BrewApp.refresh();
-    },
-
-    clearSelection() {
-      this.selectedRecords.clear();
-      this.updateCompareHint();
+      UI.elements.category.value = '';
+      UI.elements.action.value = '';
+      UI.elements.emission.value = 1;
+      this.setDefaultDate();
+      UI.elements.category.focus();
     }
   };
 
@@ -525,21 +252,32 @@
 
     init() {
       window.addEventListener('resize', () => this.render());
+      this.renderLegend();
+    },
+
+    renderLegend() {
+      UI.elements.chartLegend.innerHTML = CATEGORIES.map(cat => `
+        <div class="legend-item">
+          <span class="legend-color" style="background: ${cat.color}"></span>
+          <span>${cat.name}</span>
+        </div>
+      `).join('');
     },
 
     render() {
-      const records = StorageManager.getRecords()
-        .sort((a, b) => a.createdAt - b.createdAt)
-        .slice(-20);
+      const records = StorageManager.getRecords();
+      const daysData = Statistics.get30DaysData(records);
 
-      if (records.length === 0) {
+      const hasData = daysData.some(d => d.total > 0);
+
+      if (!hasData) {
         UI.elements.emptyChart.style.display = 'block';
         return;
       }
 
       UI.elements.emptyChart.style.display = 'none';
 
-      const canvas = UI.elements.ratingChart;
+      const canvas = UI.elements.carbonChart;
       const ctx = canvas.getContext('2d');
 
       const rect = canvas.parentElement.getBoundingClientRect();
@@ -553,27 +291,23 @@
 
       const width = rect.width;
       const height = rect.height;
-      const padding = { top: 30, right: 20, bottom: 40, left: 40 };
+      const padding = { top: 30, right: 20, bottom: 50, left: 50 };
       const chartWidth = width - padding.left - padding.right;
       const chartHeight = height - padding.top - padding.bottom;
 
       ctx.clearRect(0, 0, width, height);
 
-      const ratings = records.map(r => r.rating);
-      const dataMin = Math.min(...ratings);
-      const dataMax = Math.max(...ratings);
-      const minRating = dataMin - 0.5;
-      const maxRating = dataMax + 0.5;
+      const maxValue = Math.max(...daysData.map(d => d.total));
+      const maxY = Math.ceil(maxValue / 5) * 5 || 10;
 
-      this.drawGrid(ctx, padding, chartWidth, chartHeight, minRating, maxRating);
-      this.drawAxes(ctx, padding, chartWidth, chartHeight, minRating, maxRating);
-      this.drawLine(ctx, records, padding, chartWidth, chartHeight, minRating, maxRating);
-      this.drawDataPoints(ctx, records, padding, chartWidth, chartHeight, minRating, maxRating);
-      this.drawLabels(ctx, records, padding, chartWidth, chartHeight);
+      this.drawGrid(ctx, padding, chartWidth, chartHeight, maxY);
+      this.drawAxes(ctx, padding, chartWidth, chartHeight, maxY);
+      this.drawStackedBars(ctx, daysData, padding, chartWidth, chartHeight, maxY);
+      this.drawDateLabels(ctx, daysData, padding, chartWidth, chartHeight);
     },
 
-    drawGrid(ctx, padding, width, height, minY, maxY) {
-      ctx.strokeStyle = 'rgba(62, 39, 35, 0.08)';
+    drawGrid(ctx, padding, width, height, maxY) {
+      ctx.strokeStyle = 'rgba(46, 125, 50, 0.08)';
       ctx.lineWidth = 1;
 
       const ySteps = 5;
@@ -584,19 +318,10 @@
         ctx.lineTo(padding.left + width, y);
         ctx.stroke();
       }
-
-      const xSteps = Math.min(10, 20);
-      for (let i = 0; i <= xSteps; i++) {
-        const x = padding.left + (width / xSteps) * i;
-        ctx.beginPath();
-        ctx.moveTo(x, padding.top);
-        ctx.lineTo(x, padding.top + height);
-        ctx.stroke();
-      }
     },
 
-    drawAxes(ctx, padding, width, height, minY, maxY) {
-      ctx.strokeStyle = 'rgba(62, 39, 35, 0.3)';
+    drawAxes(ctx, padding, width, height, maxY) {
+      ctx.strokeStyle = 'rgba(46, 125, 50, 0.3)';
       ctx.lineWidth = 2;
 
       ctx.beginPath();
@@ -609,198 +334,196 @@
       ctx.lineTo(padding.left + width, padding.top + height);
       ctx.stroke();
 
-      ctx.fillStyle = '#6D4C41';
+      ctx.fillStyle = '#2E7D32';
       ctx.font = '11px Lato, sans-serif';
       ctx.textAlign = 'right';
 
       const ySteps = 5;
       for (let i = 0; i <= ySteps; i++) {
         const y = padding.top + (height / ySteps) * i;
-        const value = maxY - ((maxY - minY) / ySteps) * i;
-        ctx.fillText(value.toFixed(1), padding.left - 8, y + 4);
+        const value = maxY - (maxY / ySteps) * i;
+        ctx.fillText(value.toFixed(0), padding.left - 8, y + 4);
       }
+
+      ctx.textAlign = 'center';
+      ctx.fillText('kg CO₂', padding.left - 30, padding.top - 10);
     },
 
-    drawLine(ctx, records, padding, width, height, minY, maxY) {
-      const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + height);
-      gradient.addColorStop(0, 'rgba(255, 143, 0, 0.3)');
-      gradient.addColorStop(1, 'rgba(255, 143, 0, 0.02)');
+    drawStackedBars(ctx, daysData, padding, width, height, maxY) {
+      const barWidth = (width / daysData.length) * 0.7;
+      const gap = (width / daysData.length) * 0.3;
 
-      ctx.beginPath();
-      records.forEach((record, i) => {
-        const x = padding.left + (width / (records.length - 1 || 1)) * i;
-        const y = padding.top + height - ((record.rating - minY) / (maxY - minY)) * height;
+      daysData.forEach((day, dayIndex) => {
+        const x = padding.left + (width / daysData.length) * dayIndex + gap / 2;
+        let yOffset = 0;
 
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      });
+        CATEGORIES.forEach(cat => {
+          const value = day.categories[cat.name];
+          const barHeight = (value / maxY) * height;
 
-      ctx.lineTo(padding.left + width, padding.top + height);
-      ctx.lineTo(padding.left, padding.top + height);
-      ctx.closePath();
-      ctx.fillStyle = gradient;
-      ctx.fill();
+          if (value > 0) {
+            const y = padding.top + height - barHeight - yOffset;
 
-      ctx.beginPath();
-      records.forEach((record, i) => {
-        const x = padding.left + (width / (records.length - 1 || 1)) * i;
-        const y = padding.top + height - ((record.rating - minY) / (maxY - minY)) * height;
+            const gradient = ctx.createLinearGradient(x, y, x, y + barHeight);
+            gradient.addColorStop(0, cat.color);
+            gradient.addColorStop(1, this.adjustColor(cat.color, -30));
 
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      });
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(x, y, barWidth, barHeight, [2, 2, 0, 0]);
+            ctx.fill();
+          }
 
-      ctx.strokeStyle = '#FF8F00';
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.stroke();
-    },
-
-    drawDataPoints(ctx, records, padding, width, height, minY, maxY) {
-      records.forEach((record, i) => {
-        const x = padding.left + (width / (records.length - 1 || 1)) * i;
-        const y = padding.top + height - ((record.rating - minY) / (maxY - minY)) * height;
-
-        ctx.beginPath();
-        ctx.arc(x, y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fill();
-        ctx.strokeStyle = '#FF8F00';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#FF8F00';
-        ctx.fill();
+          yOffset += barHeight;
+        });
       });
     },
 
-    drawLabels(ctx, records, padding, width, height) {
-      if (records.length <= 1) return;
-
-      ctx.fillStyle = '#8D6E63';
+    drawDateLabels(ctx, daysData, padding, width, height) {
+      ctx.fillStyle = '#388E3C';
       ctx.font = '10px Lato, sans-serif';
       ctx.textAlign = 'center';
 
-      const step = Math.ceil(records.length / 6);
+      const step = Math.ceil(daysData.length / 6);
 
-      records.forEach((record, i) => {
-        if (i % step !== 0 && i !== records.length - 1) return;
+      daysData.forEach((day, i) => {
+        if (i % step !== 0 && i !== daysData.length - 1) return;
 
-        const x = padding.left + (width / (records.length - 1)) * i;
-        const date = new Date(record.createdAt);
+        const x = padding.left + (width / daysData.length) * i + (width / daysData.length) / 2;
+        const date = new Date(day.date);
         const label = `${date.getMonth() + 1}/${date.getDate()}`;
 
         ctx.fillText(label, x, padding.top + height + 20);
       });
+    },
+
+    adjustColor(color, amount) {
+      const hex = color.replace('#', '');
+      const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
+      const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
+      const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
+      return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
   };
 
-  const CompareManager = {
-    showComparison(id1, id2) {
-      const records = StorageManager.getRecords();
-      const recordA = records.find(r => r.id === id1);
-      const recordB = records.find(r => r.id === id2);
+  const HistoryList = {
+    render() {
+      let records = StorageManager.getRecords();
+      records = records.sort((a, b) => new Date(b.date) - new Date(a.date) || b.created_at - a.created_at);
 
-      if (!recordA || !recordB) {
-        UI.showToast('找不到记录', 'error');
+      UI.elements.recordCount.textContent = records.length;
+
+      if (records.length === 0) {
+        this.renderEmptyState();
         return;
       }
 
-      const fields = ['beanName', 'grindSize', 'coffeeWeight', 'waterTemp', 'waterAmount', 'brewTime', 'rating'];
-      let diffCount = 0;
+      UI.elements.historyList.innerHTML = records.map(record =>
+        this.createRecordCard(record)
+      ).join('');
 
-      const container = UI.elements.compareContent;
-      container.innerHTML = '';
+      this.bindCardEvents();
+    },
 
-      fields.forEach(field => {
-        const valueA = recordA[field];
-        const valueB = recordB[field];
-        const isDiff = valueA !== valueB;
+    renderEmptyState() {
+      UI.elements.historyList.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🌿</div>
+          <p>还没有碳排放记录</p>
+          <p class="empty-hint">填写左侧表单开始记录你的碳足迹</p>
+        </div>
+      `;
+    },
 
-        if (isDiff) diffCount++;
+    createRecordCard(record) {
+      return `
+        <div class="record-item category-${record.category}" data-id="${record.id}">
+          <div class="record-header">
+            <span class="record-category">${record.category}</span>
+            <span class="record-emission">${record.emission_kg.toFixed(2)} kg</span>
+          </div>
+          <div class="record-action">${UI.escapeHtml(record.action)}</div>
+          <div class="record-footer">
+            <span class="record-date">${UI.formatDate(record.date)}</span>
+            <button class="delete-btn" data-delete="${record.id}">删除</button>
+          </div>
+        </div>
+      `;
+    },
 
-        const row = document.createElement('div');
-        row.className = 'compare-row' + (isDiff ? ' diff' : '');
-
-        const cellA = document.createElement('div');
-        cellA.className = 'compare-value a';
-        if (field === 'rating') {
-          this.appendRatingCell(cellA, valueA);
-        } else {
-          cellA.textContent = UI.formatValue(field, valueA);
-        }
-
-        const nameCell = document.createElement('div');
-        nameCell.className = 'compare-param-name';
-        nameCell.textContent = FIELD_LABELS[field];
-
-        const cellB = document.createElement('div');
-        cellB.className = 'compare-value b';
-        if (field === 'rating') {
-          this.appendRatingCell(cellB, valueB);
-        } else {
-          cellB.textContent = UI.formatValue(field, valueB);
-        }
-
-        row.appendChild(cellA);
-        row.appendChild(nameCell);
-        row.appendChild(cellB);
-        container.appendChild(row);
+    bindCardEvents() {
+      const deleteBtns = UI.elements.historyList.querySelectorAll('[data-delete]');
+      deleteBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.deleteRecord(btn.dataset.delete);
+        });
       });
-
-      UI.elements.diffCount.textContent = diffCount + ' 处差异';
-      UI.elements.compareCard.style.display = 'block';
-
-      setTimeout(() => {
-        UI.elements.compareCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 100);
     },
 
-    appendRatingCell(cell, rating) {
-      for (let i = 1; i <= 5; i++) {
-        const star = document.createElement('span');
-        star.className = i <= rating ? 'filled' : '';
-        star.textContent = i <= rating ? '★' : '☆';
-        cell.appendChild(star);
-      }
-      const text = document.createTextNode(' (' + rating + '分)');
-      cell.appendChild(text);
-    },
+    deleteRecord(id) {
+      if (!confirm('确定要删除这条记录吗？此操作不可恢复。')) return;
 
-    hideComparison() {
-      UI.elements.compareCard.style.display = 'none';
-      HistoryList.clearSelection();
-      HistoryList.render();
+      StorageManager.deleteRecord(id);
+      UI.showToast('记录已删除', 'success');
+      CarbonApp.refresh();
     }
   };
 
-  const BrewApp = {
+  const StatsPanel = {
+    render() {
+      const records = StorageManager.getRecords();
+      const monthlyTotal = Statistics.getMonthlyTotal(records);
+      const dailyAverage = Statistics.getDailyAverage(records);
+      const comparison = Statistics.compareWithNational(dailyAverage);
+
+      UI.elements.monthlyTotal.textContent = monthlyTotal.toFixed(1);
+      UI.elements.dailyAverage.textContent = dailyAverage.toFixed(1);
+
+      const barWidth = Math.min(100, comparison.ratio);
+      UI.elements.personalBar.style.width = barWidth + '%';
+
+      const resultEl = UI.elements.comparisonResult;
+      resultEl.className = 'comparison-result';
+
+      if (comparison.level === 'none') {
+        resultEl.textContent = '暂无数据';
+      } else if (comparison.level === 'good') {
+        resultEl.classList.add('good');
+        resultEl.textContent = `🌱 很棒！你的日均排放比全国人均低 ${(100 - comparison.ratio).toFixed(0)}%`;
+      } else if (comparison.level === 'warning') {
+        resultEl.classList.add('warning');
+        const diff = Math.abs(100 - comparison.ratio).toFixed(0);
+        if (comparison.ratio >= 100) {
+          resultEl.textContent = `⚠️ 你的日均排放比全国人均高 ${diff}%，可以再努力哦`;
+        } else {
+          resultEl.textContent = `👍 不错！你的日均排放接近全国人均水平，继续保持`;
+        }
+      } else {
+        resultEl.classList.add('high');
+        resultEl.textContent = `🔥 你的日均排放比全国人均高 ${(comparison.ratio - 100).toFixed(0)}%，建议采取减排措施`;
+      }
+    }
+  };
+
+  const CarbonApp = {
     init() {
       UI.init();
       FormHandler.init();
-      HistoryList.init();
       ChartRenderer.init();
       this.refresh();
     },
 
     refresh() {
+      StatsPanel.render();
       HistoryList.render();
       ChartRenderer.render();
     }
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => BrewApp.init());
+    document.addEventListener('DOMContentLoaded', () => CarbonApp.init());
   } else {
-    BrewApp.init();
+    CarbonApp.init();
   }
 })();
